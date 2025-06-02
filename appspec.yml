@@ -1,0 +1,14 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ubuntu/project_files/scip-staging-new/
+hooks:
+  ApplicationStart:
+    - location: startup_script
+      timeout: 300
+      runas: root
+  ApplicationStop:
+    - location: shutdown_script
+      timeout: 300
+      runas: root

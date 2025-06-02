@@ -1,0 +1,8 @@
+#!/bin/bash
+cd /home/ubuntu/project_files/scip-staging-new/
+# sudo docker-compose up -d
+sudo docker-compose -f docker-compose.prod.yaml --compatibility up -d
+# sudo service nginx restart
+# sudo service gunicorn restart
+# sudo service celery restart
+# sudo service celerybeat restart

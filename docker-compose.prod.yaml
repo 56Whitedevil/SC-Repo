@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  redis:
+    restart: "always"
+    image: redis
+    volumes:
+      - ./scip_data/redis:/data
+  web:
+    tty: true
+    restart: always
+    build: .
+    mem_limit: 3g
+    command: bash -c 'pip install -r requirements.txt; python manage.py migrate; python manage.py runserver_plus 0.0.0.0:8000;'
+    volumes:
+      - .:/app
+    ports:
+      - "8000-8002:8000"
+      # - "5678:5678"
+    deploy:
+      mode: replicated
+      replicas: 3
+      endpoint_mode: vip
+    env_file:
+      - .env.prod
+
+  celery:
+    tty: true
+    restart: always
+    build: .
+    command: bash -c 'pip install -r requirements.txt; watchmedo auto-restart -R -d . -p '*.py' -i '*.zip' -- celery -A scip worker -l INFO -B;'
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - web
+    env_file:
+      - .env.prod

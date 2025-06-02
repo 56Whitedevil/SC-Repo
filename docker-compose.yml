@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres
+    shm_size: 1g
+    environment:
+      - POSTGRES_DB=scip
+      - POSTGRES_USER=scip_user
+      - POSTGRES_PASSWORD=scip_pw
+    volumes:
+      - ./scip_data/postgresql/data:/var/lib/postgresql@14/data
+    ports:
+      - "6000:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scip_user scip"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    restart: "always"
+    image: redis
+    volumes:
+      - ./scip_data/redis:/data
+  web:
+    tty: true
+    restart: always
+    build: .
+    command: bash -c 'while !</dev/tcp/db/5432; do sleep 1; done; pip install -r requirements.txt; pip install -r requirements.dev.txt; python manage.py migrate; python -m debugpy --listen 0.0.0.0:5678 manage.py runserver_plus 0.0.0.0:8000;'
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    depends_on:
+      - db
+    environment:
+      - LOCAL=True
+      - EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+      - EMAIL_FROM_ADDRESS=no-reply@njschoolclimate.org
+  celery:
+    tty: true
+    restart: always
+    build: .
+    command: bash -c 'while !</dev/tcp/db/5432; do sleep 1; done; pip install -r requirements.txt; pip install -r requirements.dev.txt; watchmedo auto-restart -R -d . -p '*.py' -i '*.zip' -- celery -A scip worker -l INFO -B;'
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+      - web
+    environment:
+      - LOCAL=True
+      - EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+      - EMAIL_FROM_ADDRESS=no-reply@njschoolclimate.org
